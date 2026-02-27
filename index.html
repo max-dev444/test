@@ -1,13 +1,172 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-</head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade Hub</title>
   <style>
-    <h1 {
-      color:black
-    }
+    :root { font-family: Arial, sans-serif; color-scheme: dark; }
+    body { margin: 0; background: #10131a; color: #eef2ff; }
+    header { padding: 1rem 1.5rem; background: #1b2230; border-bottom: 1px solid #2d3b55; }
+    h1 { margin: 0; font-size: 1.5rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 1.2rem; }
+    .panel { background: #182234; border: 1px solid #2d3b55; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    .row { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+    input { padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid #3d5074; background: #0e1625; color: #fff; }
+    button { padding: 0.55rem 0.9rem; border: 0; border-radius: 8px; background: #4f78ff; color: white; cursor: pointer; }
+    button.secondary { background: #34415f; }
+    button:hover { filter: brightness(1.1); }
+    #gamesGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.8rem; }
+    .game-card { background: #0f1828; border: 1px solid #2a3a58; border-radius: 10px; padding: 0.8rem; }
+    .game-card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+    .small { opacity: 0.8; font-size: 0.9rem; }
+    #status { font-weight: bold; }
+    #welcome { display: none; justify-content: space-between; align-items: center; }
+    #authForms { display: block; }
   </style>
-  <body>
-    <h1>test</h1>
-  </body>
+</head>
+<body>
+  <header>
+    <h1>Arcade Hub: 52 Browser Games</h1>
+  </header>
+  <main>
+    <section class="panel" id="authPanel">
+      <div id="authForms">
+        <h2>Login / Register</h2>
+        <p class="small">Create an account, then log in to launch any game.</p>
+        <div class="row">
+          <input id="username" placeholder="Username" autocomplete="username" />
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+          <button id="registerBtn">Register</button>
+          <button id="loginBtn">Login</button>
+        </div>
+      </div>
+      <div id="welcome" class="row">
+        <div>
+          <h2 id="welcomeText"></h2>
+          <div class="small">Your account is stored locally in this browser.</div>
+        </div>
+        <button id="logoutBtn" class="secondary">Logout</button>
+      </div>
+      <p id="status"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Game Library</h2>
+      <p class="small">Each game is a separate file under <code>/games</code>.</p>
+      <div id="gamesGrid"></div>
+    </section>
+  </main>
+
+  <script>
+    const USERS_KEY = "arcade_users_v1";
+    const SESSION_KEY = "arcade_current_user_v1";
+
+    const usernameEl = document.getElementById("username");
+    const passwordEl = document.getElementById("password");
+    const statusEl = document.getElementById("status");
+    const authForms = document.getElementById("authForms");
+    const welcome = document.getElementById("welcome");
+    const welcomeText = document.getElementById("welcomeText");
+    const gamesGrid = document.getElementById("gamesGrid");
+
+    function loadUsers() {
+      return JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    function setStatus(message, ok = true) {
+      statusEl.textContent = message;
+      statusEl.style.color = ok ? "#67f2a3" : "#ff8a9a";
+    }
+
+    function currentUser() {
+      return localStorage.getItem(SESSION_KEY);
+    }
+
+    function setCurrentUser(username) {
+      if (username) {
+        localStorage.setItem(SESSION_KEY, username);
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+      renderAuthState();
+      renderGames();
+    }
+
+    function renderAuthState() {
+      const user = currentUser();
+      if (user) {
+        authForms.style.display = "none";
+        welcome.style.display = "flex";
+        welcomeText.textContent = `Welcome, ${user}!`;
+      } else {
+        authForms.style.display = "block";
+        welcome.style.display = "none";
+      }
+    }
+
+    function register() {
+      const username = usernameEl.value.trim();
+      const password = passwordEl.value;
+      if (!username || !password) return setStatus("Enter username and password.", false);
+      const users = loadUsers();
+      if (users[username]) return setStatus("Username already exists.", false);
+      users[username] = {
+        passwordHash: btoa(unescape(encodeURIComponent(password))),
+        createdAt: new Date().toISOString()
+      };
+      saveUsers(users);
+      setStatus("Registered! You can now log in.");
+    }
+
+    function login() {
+      const username = usernameEl.value.trim();
+      const password = passwordEl.value;
+      const users = loadUsers();
+      if (!users[username]) return setStatus("User not found.", false);
+      const hash = btoa(unescape(encodeURIComponent(password)));
+      if (users[username].passwordHash !== hash) return setStatus("Wrong password.", false);
+      setCurrentUser(username);
+      setStatus("Logged in successfully.");
+    }
+
+    function logout() {
+      setCurrentUser("");
+      setStatus("Logged out.");
+    }
+
+    function renderGames() {
+      const user = currentUser();
+      const frag = document.createDocumentFragment();
+      gamesGrid.innerHTML = "";
+      for (let i = 1; i <= 52; i++) {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        const padded = String(i).padStart(2, "0");
+        const title = `Game ${padded}`;
+        card.innerHTML = `<h3>${title}</h3><p class="small">Score challenge #${i}</p>`;
+        const btn = document.createElement("button");
+        btn.textContent = user ? "Play" : "Login to Play";
+        btn.disabled = !user;
+        btn.addEventListener("click", () => {
+          window.location.href = `games/game${padded}.html`;
+        });
+        card.appendChild(btn);
+        frag.appendChild(card);
+      }
+      gamesGrid.appendChild(frag);
+    }
+
+    document.getElementById("registerBtn").addEventListener("click", register);
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    renderAuthState();
+    renderGames();
+  </script>
+</body>
 </html>
