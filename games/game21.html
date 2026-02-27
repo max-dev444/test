@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game 21 - Meteor Smash</title>
+  <style>
+    body { margin:0; background:#0e1220; color:#fff; font-family:Arial,sans-serif; display:grid; place-items:center; min-height:100vh; }
+    .box { width:min(95vw,620px); background:#151c30; border:1px solid #2a3559; border-radius:12px; padding:1rem; }
+    .hud { display:flex; justify-content:space-between; margin-bottom:0.8rem; gap:0.6rem; flex-wrap:wrap; }
+    #arena { position:relative; height:360px; background:#0a1020; border:1px solid #243253; border-radius:10px; overflow:hidden; }
+    #target { position:absolute; width:56px; height:56px; border-radius:50%; background:#4d96ff; cursor:pointer; box-shadow:0 0 16px #4d96ff; display:grid; place-items:center; font-weight:bold; }
+    button,a { margin-top:0.8rem; padding:0.55rem 0.85rem; border:0; border-radius:8px; text-decoration:none; display:inline-block; }
+    button { background:#4d96ff; color:#111; cursor:pointer; font-weight:bold; }
+    a { background:#33415f; color:white; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Game 21: Meteor Smash</h1>
+    <p>Click the orb to score points. Reach <strong>25</strong> before the timer ends.</p>
+    <div class="hud">
+      <div>Score: <span id="score">0</span> / 25</div>
+      <div>Time: <span id="time">20</span>s</div>
+      <div>Best: <span id="best">0</span></div>
+    </div>
+    <div id="arena"><div id="target">+1</div></div>
+    <div id="msg"></div>
+    <button id="restart">Restart</button>
+    <a href="../index.html">Back to Home</a>
+  </div>
+<script>
+(() => {
+  const key = 'game_best_21';
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const bestEl = document.getElementById('best');
+  const msgEl = document.getElementById('msg');
+  const arena = document.getElementById('arena');
+  const target = document.getElementById('target');
+  const restart = document.getElementById('restart');
+  let score = 0;
+  let timeLeft = 20;
+  let done = false;
+  bestEl.textContent = Number(localStorage.getItem(key) || 0);
+
+  function moveTarget() {
+    const maxX = arena.clientWidth - target.offsetWidth;
+    const maxY = arena.clientHeight - target.offsetHeight;
+    target.style.left = Math.floor(Math.random()*maxX) + 'px';
+    target.style.top = Math.floor(Math.random()*maxY) + 'px';
+  }
+
+  function finish(win) {
+    done = true;
+    target.style.display = 'none';
+    msgEl.textContent = win ? 'You win! 🎉' : 'Time up! Try again.';
+    msgEl.style.color = win ? '#67f2a3' : '#ff8a9a';
+    const best = Number(localStorage.getItem(key) || 0);
+    if (score > best) {
+      localStorage.setItem(key, String(score));
+      bestEl.textContent = String(score);
+    }
+  }
+
+  target.addEventListener('click', () => {
+    if (done) return;
+    score++;
+    scoreEl.textContent = score;
+    moveTarget();
+    if (score >= 25) finish(true);
+  });
+
+  restart.addEventListener('click', () => window.location.reload());
+  moveTarget();
+  const timer = setInterval(() => {
+    if (done) return clearInterval(timer);
+    timeLeft--;
+    timeEl.textContent = timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      finish(false);
+    }
+  }, 1000);
+})();
+</script>
+</body>
+</html>
